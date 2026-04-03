@@ -1,4 +1,4 @@
-# PSLog
+﻿# PSLogProxy
 
 Proxy functions that overwrite the following built-in `Write-*` cmdlets and add additional logging (features):
 
@@ -10,17 +10,17 @@ Proxy functions that overwrite the following built-in `Write-*` cmdlets and add 
 - `Write-Debug`
 - ~~`Write-Host`~~ (avoid using Write-Host)
 
-Define features (e.g. LogFile, see `Data\PSLog.Features.ps1`) which will be called on every `Write-*` invocation using private functions (e.g. `Write-LogFile`, see `Private\Write-LogFile.ps1`).
+Define features (e.g. LogFile, see `Data\PSLogProxy.Features.ps1`) which will be called on every `Write-*` invocation using private functions (e.g. `Write-LogFile`, see `Private\Write-LogFile.ps1`).
 
-# PSLog Functions
+# PSLogProxy Functions
 
-- `Get-PSLogFeature`
-- `Enable-PSLogFeature`
-- `Disable-PSLogFeature`
-- `Get-PSLogFeatureSetting`
-- `Set-PSLogFeatureSetting`
-- `Get-PSLogSetting`
-- `Set-PSLogSetting`
+- `Get-PSLogProxyFeature`
+- `Enable-PSLogProxyFeature`
+- `Disable-PSLogProxyFeature`
+- `Get-PSLogProxyFeatureSetting`
+- `Set-PSLogProxyFeatureSetting`
+- `Get-PSLogProxySetting`
+- `Set-PSLogProxySetting`
 
 See [Usage](#usage) for examples.
 
@@ -75,7 +75,7 @@ Disabled by default.
 
 #### LogFile
 
-UNC path to the logfile, default: `"C:\temp\PSLog.log"`
+UNC path to the logfile, default: `"C:\temp\PSLogProxy.log"`
 
 ## Seq
 
@@ -87,7 +87,7 @@ Disabled by default.
 
 #### Uri
 
-The full URI of the Seq ingest endpoint. Must be set via `Set-PSLogFeatureSetting`.
+The full URI of the Seq ingest endpoint. Must be set via `Set-PSLogProxyFeatureSetting`.
 
 #### Method
 
@@ -99,11 +99,11 @@ ScriptBlock string evaluated at runtime to produce the request body. Has access 
 
 #### Properties
 
-Hashtable of additional properties sent with each event, e.g. `@{text=''}`. Can be extended at runtime via `Set-PSLogFeatureSetting`.
+Hashtable of additional properties sent with each event, e.g. `@{text=''}`. Can be extended at runtime via `Set-PSLogProxyFeatureSetting`.
 
 ## Implement New Feature
 
-Add a new `[PSLogFeature]` object to the `$Script:PSLogFeature` array in `Data\PSLog.Features.ps1` with `Name`, `Enabled`, and `CommandString`.
+Add a new `[PSLogProxyFeature]` object to the `$Script:PSLogProxyFeature` array in `Data\PSLogProxy.Features.ps1` with `Name`, `Enabled`, and `CommandString`.
 
 When a feature is enabled, its `CommandString` is called for every `Write-*` invocation. Before execution, the following placeholders are replaced:
 
@@ -135,7 +135,7 @@ String used to join prefixes, default: `' | '`
 **Import the module** to overwrite the built-in functions. If any feature is enabled, a verbose message is written on import (even if `$VerbosePreference` is `SilentlyContinue`):
 
 ```
-2023-02-14 10:57:28Z | Verbose | PSLog Module activated on Computer1 with UserName1 (Enabled Feature: LogFile)
+2023-02-14 10:57:28Z | Verbose | PSLogProxy Module activated on Computer1 with UserName1 (Enabled Feature: LogFile)
 ```
 
 Once loaded, use the proxy functions normally — enabled features are invoked automatically.
@@ -146,23 +146,23 @@ Once loaded, use the proxy functions normally — enabled features are invoked a
 
 ```powershell
 # Enable LogFile feature
-Enable-PSLogFeature -Name LogFile
+Enable-PSLogProxyFeature -Name LogFile
 # Disable LogFile feature
-Disable-PSLogFeature -Name LogFile
+Disable-PSLogProxyFeature -Name LogFile
 ```
 
 ### Change Feature Settings
 
 ```powershell
 # Change the log file path for the LogFile feature
-Get-PSLogFeature -Name "LogFile" | Set-PSLogFeatureSetting -Name "LogFile" -Value "C:\temp\PSLog.log"
+Get-PSLogProxyFeature -Name "LogFile" | Set-PSLogProxyFeatureSetting -Name "LogFile" -Value "C:\temp\PSLogProxy.log"
 ```
 
 ### Change Log Settings
 
 ```powershell
 # Change DateTimeString to Swiss format
-Set-PSLogSetting -DateTimeString {Get-Date -Format "dd.MM.yyyy HH:mm:ss"}
+Set-PSLogProxySetting -DateTimeString {Get-Date -Format "dd.MM.yyyy HH:mm:ss"}
 ```
 
 # Known Issues
