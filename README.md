@@ -1,67 +1,63 @@
-# Table of contents
+# PSLog
 
-[[_TOC_]]
+Proxy functions that overwrite the following built-in `Write-*` cmdlets and add additional logging (features):
 
-# Scope
+- `Write-Verbose`
+- `Write-Warning`
+- `Write-Information`
+- `Write-Output` (uses `$PSCmdlet.WriteObject()` instead of steppable pipeline — avoids deadlock on Azure Automation)
+- `Write-Error` (not a steppable proxy; uses `$PSCmdlet.WriteError()` with a synthetic `ErrorRecord`)
+- `Write-Debug`
+- ~~`Write-Host`~~ (avoid using Write-Host)
 
-Proxy functions, overwrites the following built-in Write-\* functions (as e.g. Write-Verbose) and adds additional logging (features)
+Define features (e.g. LogFile, see `Data\PSLog.Features.ps1`) which will be called on every `Write-*` invocation using private functions (e.g. `Write-LogFile`, see `Private\Write-LogFile.ps1`).
 
-- Write-Verbose
-- Write-Warning
-- Write-Information
-- Write-Output (uses `$PSCmdlet.WriteObject()` instead of steppable pipeline — avoids deadlock on Azure Automation)
-- Write-Error (not a steppable proxy; uses `$PSCmdlet.WriteError()` with a synthetic `ErrorRecord`)
-- Write-Debug
-- ~~Write-Host~~ (Avoid using Write-Host)
+# PSLog Functions
 
-Define Features (e.g. LogFile, see Data\PSLog.Features.ps1) which wil be called on the invocation of the Write-\* function using private functions (e.g. Write-LogFile, see Private\Write-LogFile.ps1)
+- `Get-PSLogFeature`
+- `Enable-PSLogFeature`
+- `Disable-PSLogFeature`
+- `Get-PSLogFeatureSetting`
+- `Set-PSLogFeatureSetting`
+- `Get-PSLogSetting`
+- `Set-PSLogSetting`
 
-# PSLog function
-
-- Get-PSLogFeature
-- Enable-PSLogFeature
-- Disable-PSLogFeature
-- Get-PSLogFeatureSetting
-- Set-PSLogFeatureSetting
-- Get-PSLogSetting
-- Set-PSLogSetting
-
-Check [Usage](#usage) to see how to use...
+See [Usage](#usage) for examples.
 
 # Log Features
 
 ## Api
 
-Additionaly makes an API call on every enabled LogFunction invocation.
+Additionally makes an API call on every enabled log function invocation.
 
-Disabled by default
+Disabled by default.
 
-### Feature Settings:
+### Feature Settings
 
 #### Uri
 
-define the full uri, e.g. `'https://sb-api-mock.azurewebsites.net/log'`
+The full URI, e.g. `'https://sb-api-mock.azurewebsites.net/log'`
 
 #### Method
 
-Api method, e.g. `'POST'`
+HTTP method, e.g. `'POST'`
 
 #### BodyScriptBlock
 
-ScriptBlock which will be invoked on the Feature function. Therefore variables will be replaced.
-e.g. to define body (hashtable) with level and message `'@{"level"=$Type; "message"=$Message}'`
+ScriptBlock string evaluated at runtime. Variables `$Type` and `$Message` are available.
+e.g. `'@{"level"=$Type; "message"=$Message}'`
 
 #### AddPrefixDateTimeString (available on all features)
 
-If specified, adds the DateTimeString (ScriptBlock defined in Settings) to the Feature message
+If `$true`, adds the DateTimeString (ScriptBlock defined in Settings) to the feature message.
 
 #### AddPrefixStream (available on all features)
 
-If specified, adds the stream noun (e.g. `Warning`) to the Feature message. Defaults to `$true` on LogFile only.
+If `$true`, adds the stream noun (e.g. `Warning`) to the feature message. Defaults to `$true` on LogFile only.
 
 #### AddPrefixInvocationScript (available on all features)
 
-If specified, adds the noun of the script which has invoked the Write-\* call ($MyInvocation.ScriptName) as Prefix to the stream message
+If `$true`, adds the calling script leaf name (`$MyInvocation.ScriptName`) as a prefix to the feature message.
 
 #### ExcludeMessageRegex (available on all features that define it)
 
@@ -69,25 +65,25 @@ Array of regex patterns. If any match the message, the feature is skipped for th
 
 ## LogFile
 
-Additionaly logs the message of all the Logfunctions to a logfile (UNC Path) with a universal sortable datetime stamp
+Additionally logs all messages to a logfile (UNC path) with a universal sortable datetime stamp.
 
-The Write-to-File feature can not be used on Azure Automation worker
+Cannot be used on Azure Automation workers.
 
-Disabled by default
+Disabled by default.
 
-### Feature Settings:
+### Feature Settings
 
 #### LogFile
 
-UNC Path to the Logfile, default: `"C:\temp\PSLog.log"`
+UNC path to the logfile, default: `"C:\temp\PSLog.log"`
 
 ## Seq
 
 Sends log events to a Seq log server via HTTP.
 
-Disabled by default
+Disabled by default.
 
-### Feature Settings:
+### Feature Settings
 
 #### Uri
 
@@ -103,73 +99,69 @@ ScriptBlock string evaluated at runtime to produce the request body. Has access 
 
 #### Properties
 
-Hashtable of additional properties sent with each event, e.g. `@{text=''}`. Properties can be extended at runtime via `Set-PSLogFeatureSetting`.
+Hashtable of additional properties sent with each event, e.g. `@{text=''}`. Can be extended at runtime via `Set-PSLogFeatureSetting`.
 
-## Implement New feature
+## Implement New Feature
 
-Simply add new feature [PSLogFeature] object to $Script:PSLogFeature array with Name, Enabled and CommandString.
+Add a new `[PSLogFeature]` object to the `$Script:PSLogFeature` array in `Data\PSLog.Features.ps1` with `Name`, `Enabled`, and `CommandString`.
 
-If a PSLogFeature is enabled, its CommandString will be called for every proxy function (Write-\*)
+When a feature is enabled, its `CommandString` is called for every `Write-*` invocation. Before execution, the following placeholders are replaced:
 
-Before the CommandString is converted and executed, the following will be replaced:
+- `{{Stream}}` — noun of the proxy function (e.g. `Verbose` in `Write-Verbose`)
+- `{{Message}}` — the message passed to the proxy function
 
-{{Stream}} --> Noun of the proxy function (e.g. Verbose in Write-Verbose)
-
-{{Message}} --> Message of the called proxy function
-
-Define private functions to use in CommandString
+Add a matching private function in `Private\` for use in `CommandString`.
 
 # Settings
 
 ## DateTimeStringScriptblock
 
-ScriptBlock will be invoked during Write-\* invocation call for DateTimeString Prefix, default `{get-date -format u}`
+ScriptBlock invoked during `Write-*` calls to produce the datetime prefix string, default: `{get-date -format u}`
 
 ## AddStreamPrefixDateTimeString
 
-Boolean, if true, adds the DateTimeString (ScriptBlock defined in DateTimeStringScriptblock) to the stream message
+Boolean. If `$true`, adds the DateTimeString to the PowerShell stream message. Default: `$false`
 
 ## AddStreamPrefixInvocationScript
 
-Boolean, if true, adds the noun of the script which has invoked the Write-\* call ($MyInvocation.ScriptName) as Prefix to the stream message, default ``$true``
+Boolean. If `$true`, adds the calling script leaf name (`$MyInvocation.ScriptName`) as a prefix to the stream message. Default: `$true`
 
 ## PrefixDelimiter
 
-Used to delimit the prefixes, default `' | '`
+String used to join prefixes, default: `' | '`
 
 # Usage
 
-Simply **import the module** to overwrite the built-in functions.
-A Verbose Message will be displayed on the console and in the enabled feature when Log Module is activated (even if VerbosePreference is SilentlyContinue), e.g.
+**Import the module** to overwrite the built-in functions. If any feature is enabled, a verbose message is written on import (even if `$VerbosePreference` is `SilentlyContinue`):
 
 ```
 2023-02-14 10:57:28Z | Verbose | PSLog Module activated on Computer1 with UserName1 (Enabled Feature: LogFile)
 ```
 
-Once the module is loaded, simply use the listed Proxy functions (above) and additional steps (log features) will be processed:
+Once loaded, use the proxy functions normally — enabled features are invoked automatically.
 
 ## Configuration
 
 ### Enable/Disable Features
 
 ```powershell
-# Enable LogFile Feature
+# Enable LogFile feature
 Enable-PSLogFeature -Name LogFile
-# Disable LogFile Feature
+# Disable LogFile feature
 Disable-PSLogFeature -Name LogFile
 ```
 
 ### Change Feature Settings
 
 ```powershell
-# Change LogFilePath for the LogFile feature
+# Change the log file path for the LogFile feature
 Get-PSLogFeature -Name "LogFile" | Set-PSLogFeatureSetting -Name "LogFile" -Value "C:\temp\PSLog.log"
 ```
 
 ### Change Log Settings
 
 ```powershell
-# Change DateTimeString to swiss format
+# Change DateTimeString to Swiss format
 Set-PSLogSetting -DateTimeString {Get-Date -Format "dd.MM.yyyy HH:mm:ss"}
 ```
 
@@ -177,70 +169,8 @@ Set-PSLogSetting -DateTimeString {Get-Date -Format "dd.MM.yyyy HH:mm:ss"}
 
 ## Write-Debug
 
-    - additional "Setting WindowTitle: log [main] - PowerShell 7.3 (xxx)" debug output may appear in some PS7 hosts
+- Additional `"Setting WindowTitle: log [main] - PowerShell 7.3 (xxx)"` debug output may appear in some PS7 hosts.
 
 ## Write-Output
 
-    - does not work on Azure Automation (PS5.1)
-
-## Changelog
-
-### 0.0.1
-
-Initial version. Includes Write-to-File step
-
-### 0.0.2
-
-Store features snipplets in hashtable (script scope) / Introduce LogSettings / Added PesterTests
-
-### 0.0.3
-
-Implemented Write-Information, Write-Debug and use only proxy function
-
-### 0.0.4
-
-Changed module structure and renamed module to PSLog
-
-### 0.0.5
-
-Adding new Feature LogToMockJsonServer / introduce PSModule Data folder
-
-### 0.0.6
-
-Add WriteToMockJsonServer Pester / Separate Data file
-
-### 0.0.7
-
-Introduce AddInvocationScriptPrefix Setting
-
-### 0.0.8
-
-Fix String Injection in Message
-
-### 0.0.9
-
-Introduce individual Prefix in Feature (configured in FeatureSetting) & Stream (configured in Settings)
-
-### 0.0.10
-
-Disabled Write-Output (does not work in AA)
-
-### 0.0.11
-
-Added seqlog feature
-
-### 0.0.12
-
-Added dune relevant properties (txId, jobId, ) into seqlog call
-
-### 0.0.13
-
-Fixed error by using other method as proxy function
-
-### 0.0.14
-
-Added possibility to add properties at runtime for seq feature.
-
-### 0.0.15
-
-Remove custom config from features
+- Does not work on Azure Automation (PS5.1).

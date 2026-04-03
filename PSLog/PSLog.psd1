@@ -27,7 +27,7 @@ Author = 'Martin Joho'
 CompanyName = 'Yendico AG'
 
 # Copyright statement for this module
-Copyright = '(c) Yendico AG. All rights reserved.'
+Copyright = '(c) Yendico. MIT License.'
 
 # Description of the functionality provided by this module
 Description = 'Write-* proxy functions with pluggable log feature routing (LogFile, Seq, Api)'
