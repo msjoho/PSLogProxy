@@ -12,7 +12,7 @@
 RootModule = 'PSLogProxy.psm1'
 
 # Version number of this module.
-ModuleVersion = '1.0.0'
+ModuleVersion = '1.0.1'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -95,19 +95,19 @@ PrivateData = @{
     PSData = @{
 
         # Tags applied to this module. These help with module discovery in online galleries.
-        # Tags = @()
+        Tags = @("logging","log","powershell")
 
         # A URL to the license for this module.
-        # LicenseUri = ''
+        LicenseUri = ''
 
         # A URL to the main website for this project.
-        # ProjectUri = ''
+        ProjectUri = 'https://github.com/msjoho/PSLogProxy'
 
         # A URL to an icon representing this module.
         # IconUri = ''
 
         # ReleaseNotes of this module
-        # ReleaseNotes = ''
+        ReleaseNotes = '"C:\code\github\PSLogProxy\RELEASE-NOTES.md"'
 
         # Prerelease string of this module
         # Prerelease = ''
