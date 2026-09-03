@@ -49,9 +49,19 @@
                 $FullFeatureMessage += $Message
                 $FeatureMessage = $FullFeatureMessage -join $PSLogProxySetting.PrefixDelimiter
                 # Invoke Feature
-                $ReplacedFeatureCommand = $ReplaceFeatureCommand.Invoke($Feature.CommandString, $MyInvocation.MyCommand.Noun, $FeatureMessage) #where args[0] = PSLogProxyFeature Command (see above) / $args[1] = Stream / $args[2] = LogMessage
-                $SB = [ScriptBlock]::Create($ReplacedFeatureCommand)
-                $SB.Invoke()
+                try {
+                    $ReplacedFeatureCommand = $ReplaceFeatureCommand.Invoke($Feature.CommandString, $MyInvocation.MyCommand.Noun, $FeatureMessage) #where args[0] = PSLogProxyFeature Command (see above) / $args[1] = Stream / $args[2] = LogMessage
+                    $SB = [ScriptBlock]::Create($ReplacedFeatureCommand)
+                    $SB.Invoke()
+                }
+                catch {
+                    # A logging feature must never throw out of a Write-* proxy: it would replace the
+                    # message (and error record) being logged with the feature's own failure. Seen in
+                    # production: a Seq outage and an unparsable message each surfaced as the job's
+                    # "error" while the real error was lost. Best effort note; the original stream
+                    # write below still runs.
+                    Microsoft.PowerShell.Utility\Write-Verbose "PSLogProxy feature '$($Feature.Name)' failed: $($_.Exception.Message)"
+                }
             }
 
             $wrappedCmd = $ExecutionContext.InvokeCommand.GetCommand('Microsoft.PowerShell.Utility\Write-Verbose', [System.Management.Automation.CommandTypes]::Cmdlet)
